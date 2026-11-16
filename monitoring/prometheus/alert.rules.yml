@@ -1,0 +1,69 @@
+
+groups:
+  - name: node_api_alerts
+    rules:
+      # Disponibilidade da API
+      - alert: ApiDown
+        expr: up{job="node_api"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "API indisponível"
+          description: "O Prometheus não consegue acessar a API Node.js."
+
+      # Taxa de erros HTTP 5xx
+      - alert: HighHttp5xxRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="node_api", status_code=~"5.."}[1m]))
+            /
+            clamp_min(sum(rate(http_requests_total{job="node_api"}[1m])), 0.001)
+          ) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taxa elevada de erros HTTP 5xx"
+          description: "Mais de 5% das requisições estão retornando erros de servidor."
+
+      # Taxa de erros HTTP 4xx
+      - alert: HighHttp4xxRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="node_api", status_code=~"4.."}[1m]))
+            /
+            clamp_min(sum(rate(http_requests_total{job="node_api"}[1m])), 0.001)
+          ) > 0.10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taxa elevada de erros HTTP 4xx"
+          description: "Mais de 10% das requisições estão retornando erros de cliente."
+
+      # Latência elevada - percentil 95
+      - alert: HighApiLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (
+              rate(http_request_duration_seconds_bucket{job="node_api"}[5m])
+            )
+          ) > 0.5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latência elevada na API"
+          description: "O percentil 95 do tempo de resposta ultrapassou 500ms."
+
+      # Consumo elevado de memória
+      - alert: HighNodeMemoryUsage
+        expr: process_resident_memory_bytes{job="node_api"} > 314572800
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Consumo elevado de memória"
+          description: "A memória residente da API ultrapassou 300MB."

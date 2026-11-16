@@ -1,0 +1,19 @@
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: api-webhook
+  group_by:
+    - alertname
+    - service
+    - severity
+  group_wait: 10s
+  group_interval: 30s
+  repeat_interval: 1h
+
+receivers:
+  - name: api-webhook
+    webhook_configs:
+      - url: http://api:3000/api/alerts/webhook
+        send_resolved: true
